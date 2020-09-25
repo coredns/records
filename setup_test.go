@@ -3,7 +3,7 @@ package records
 import (
 	"testing"
 
-	"github.com/caddyserver/caddy"
+	"github.com/coredns/caddy"
 )
 
 func TestRecordsParse(t *testing.T) {
