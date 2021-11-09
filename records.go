@@ -76,11 +76,20 @@ func New() *Records {
 	return re
 }
 
-func (re *Records) Answer(z string) (records []dns.RR) {
-	if zone := plugin.Zones(re.origins).Matches(z); zone != "" {
-		for _, r := range re.m[zone] {
-			records = append(records, r)
+func (re *Records) Lookup(zone, qname string, qclass, qtype uint16) dns.RR {
+	for _, rr := range re.All(zone) {
+		if h := rr.Header(); h.Name == qname && h.Rrtype == qtype && h.Class == qclass {
+			return rr
 		}
 	}
-	return
+	return nil
+}
+
+func (re *Records) All(z string) []dns.RR {
+	if zone := plugin.Zones(re.origins).Matches(z); zone != "" {
+		if records, ok := re.m[zone]; ok {
+			return records
+		}
+	}
+	return nil
 }
