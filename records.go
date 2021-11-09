@@ -75,3 +75,12 @@ func New() *Records {
 	re.m = make(map[string][]dns.RR)
 	return re
 }
+
+func (re *Records) Answer(z string) (records []dns.RR) {
+	if zone := plugin.Zones(re.origins).Matches(z); zone != "" {
+		for _, r := range re.m[zone] {
+			records = append(records, r)
+		}
+	}
+	return
+}
