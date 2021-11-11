@@ -76,9 +76,9 @@ func New() *Records {
 	return re
 }
 
-func (re *Records) Lookup(zone, qname string, qclass, qtype uint16) dns.RR {
-	for _, rr := range re.All(zone) {
-		if h := rr.Header(); h.Name == qname && h.Rrtype == qtype && h.Class == qclass {
+func (re *Records) Lookup(z string, st request.Request) dns.RR {
+	for _, rr := range re.All(z) {
+		if h := rr.Header(); h.Name == st.QName() && h.Rrtype == st.QType() && h.Class == st.QClass() {
 			return rr
 		}
 	}
