@@ -7,7 +7,7 @@ import (
 	"github.com/coredns/coredns/plugin/pkg/dnstest"
 	"github.com/coredns/coredns/plugin/test"
 
-	"github.com/caddyserver/caddy"
+	"github.com/coredns/caddy"
 	"github.com/miekg/dns"
 )
 
@@ -74,8 +74,25 @@ var testCases = []test.Case{
 func TestLookupNoSOA(t *testing.T) {
 	const input = `
 records {
-        example.org.   60  IN MX 10 mx.example.org.
-        mx.example.org. 60 IN A  127.0.0.1
+        example.org.                60    IN    MX       10 mx.example.org.
+        mx.example.org.             60    IN    A        127.0.0.1
+        cname.example.org.          60    IN    CNAME    mx.example.org.
+        cnameloop1.example.org.     60    IN    CNAME    cnameloop2.example.org.
+        cnameloop2.example.org.     60    IN    CNAME    cnameloop1.example.org.
+        cnameext.example.org.       60    IN    CNAME    mx.example.net.
+
+        cnamedepth.example.org.     60    IN    CNAME    cnamedepth1.example.org.
+        cnamedepth1.example.org.    60    IN    CNAME    cnamedepth2.example.org.
+        cnamedepth2.example.org.    60    IN    CNAME    cnamedepth3.example.org.
+        cnamedepth3.example.org.    60    IN    CNAME    cnamedepth4.example.org.
+        cnamedepth4.example.org.    60    IN    CNAME    cnamedepth5.example.org.
+        cnamedepth5.example.org.    60    IN    CNAME    cnamedepth6.example.org.
+        cnamedepth6.example.org.    60    IN    CNAME    cnamedepth7.example.org.
+        cnamedepth7.example.org.    60    IN    CNAME    cnamedepth8.example.org.
+        cnamedepth8.example.org.    60    IN    CNAME    cnamedepth9.example.org.
+        cnamedepth9.example.org.    60    IN    CNAME    cnamedepth10.example.org.
+        cnamedepth10.example.org.   60    IN    CNAME    cnamedepth11.example.org.
+        cnamedepth11.example.org.   60    IN    A        127.0.0.1
 }
 `
 
@@ -121,6 +138,27 @@ var testCasesNoSOA = []test.Case{
 	},
 	{
 		Qname: "mx.example.org.", Qtype: dns.TypeAAAA,
+	},
+	{
+		Qname: "cname.example.org.", Qtype: dns.TypeA,
+		Answer: []dns.RR{
+			test.CNAME("cname.example.org.	60	IN CNAME	mx.example.org."),
+			test.A("mx.example.org.	60	IN A	127.0.0.1"),
+		},
+	},
+	{
+		Qname: "cnameext.example.org.", Qtype: dns.TypeA,
+		Answer: []dns.RR{
+			test.CNAME("cnameext.example.org.	60	IN CNAME	mx.example.net."),
+		},
+	},
+	{
+		Rcode: dns.RcodeServerFailure,
+		Qname: "cnameloop1.example.org.", Qtype: dns.TypeA,
+	},
+	{
+		Rcode: dns.RcodeServerFailure,
+		Qname: "cnamedepth.example.org.", Qtype: dns.TypeA,
 	},
 }
 
