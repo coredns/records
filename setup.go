@@ -1,6 +1,7 @@
 package records
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/coredns/caddy"
@@ -57,9 +58,26 @@ func recordsParse(c *caddy.Controller) (*Records, error) {
 		// c.Val() +  c.RemainingArgs() is the record we need to parse (for each zone given; now tracked in re.origins). When parsing
 		// the record we just set the ORIGIN to the correct value and magic will happen. If no origin we set it to "."
 
+	parseBlocks:
 		for c.NextBlock() {
-			s := c.Val() + " "
-			s += strings.Join(c.RemainingArgs(), " ")
+			s := c.Val()
+			if s == "$OPTION" {
+				if !c.NextArg() {
+					return nil, fmt.Errorf("parsing block failed: $OPTION missing argument")
+				}
+				opt := c.Val()
+				switch opt {
+				case "fallthrough":
+					re.Fall.SetZonesFromArgs(re.origins)
+				default:
+					return nil, fmt.Errorf("parsing block failed: unknown option: %q", opt)
+				}
+				if len(c.RemainingArgs()) > 0 {
+					return nil, fmt.Errorf("parsing block failed: extra arguments after option %q", opt)
+				}
+				continue parseBlocks
+			}
+			s += " " + strings.Join(c.RemainingArgs(), " ")
 			for _, o := range re.origins {
 				rr, err := dns.NewRR("$ORIGIN " + o + "\n" + s + "\n")
 				if err != nil {

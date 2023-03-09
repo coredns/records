@@ -2,6 +2,7 @@ package records
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/coredns/coredns/plugin/pkg/dnstest"
@@ -173,5 +174,74 @@ var testCasesMultipleOrigins = []test.Case{
 		Answer: []dns.RR{
 			test.A("mx.example.net. 60	IN	A 127.0.0.1"),
 		},
+	},
+}
+
+func TestLookupFallThrough(t *testing.T) {
+	const input = `
+records example.org {
+        $OPTION fallthrough
+        @  60  IN A  127.0.0.1
+}
+`
+
+	c := caddy.NewTestController("dns", input)
+	re, err := recordsParse(c)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+tests:
+	for i, tc := range testCasesFallThrough {
+		m := tc.Msg()
+
+		rec := dnstest.NewRecorder(&test.ResponseWriter{})
+		_, err := re.ServeDNS(context.Background(), rec, m)
+		if tc.Error != nil && err == nil {
+			t.Errorf("Test %d, expected error %q, no error returned", i, tc.Error.Error())
+			return
+		}
+
+		if tc.Error == nil && err != nil {
+			t.Errorf("Test %d, expected no error, got %v", i, err)
+			return
+		}
+
+		if tc.Error != nil && err != nil {
+			if tc.Error.Error() != err.Error() {
+				t.Errorf("Test %d, expected error message %q, got %q", i, tc.Error.Error(), err.Error())
+				return
+			}
+			continue tests
+		}
+
+		if rec.Msg == nil {
+			t.Errorf("Test %d, no message received", i)
+			return
+		}
+
+		if rec.Msg.Rcode != tc.Rcode {
+			t.Errorf("Test %d, expected rcode is %d, but got %d", i, tc.Rcode, rec.Msg.Rcode)
+			return
+		}
+
+		if resp := rec.Msg; rec.Msg != nil {
+			if err := test.SortAndCheck(resp, tc); err != nil {
+				t.Errorf("Test %d: %v", i, err)
+			}
+		}
+	}
+}
+
+var testCasesFallThrough = []test.Case{
+	{
+		Qname: "example.org.", Qtype: dns.TypeA,
+		Answer: []dns.RR{
+			test.A("example.org. 60	IN	A 127.0.0.1"),
+		},
+	},
+	{
+		Qname: "foo.example.net.", Qtype: dns.TypeA,
+		Error: errors.New("plugin/records: no next plugin found"),
 	},
 }
