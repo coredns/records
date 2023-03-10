@@ -40,16 +40,8 @@ func recordsParse(c *caddy.Controller) (*Records, error) {
 		i++
 
 		// copy the server block origins, if ZONES are given we will overwrite these again
-		re.origins = make([]string, len(c.ServerBlockKeys))
-		copy(re.origins, c.ServerBlockKeys)
+		re.origins = plugin.OriginsFromArgsOrServerBlock(c.RemainingArgs(), c.ServerBlockKeys)
 
-		args := c.RemainingArgs()
-		if len(args) > 0 {
-			re.origins = args
-		}
-		for i := range re.origins {
-			re.origins[i] = plugin.Host(re.origins[i]).Normalize()
-		}
 		if len(re.origins) == 0 { // do we really need this default, just in the tests?
 			re.origins = []string{"."}
 		}
