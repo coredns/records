@@ -75,3 +75,21 @@ func New() *Records {
 	re.m = make(map[string][]dns.RR)
 	return re
 }
+
+func (re *Records) Lookup(z string, st request.Request) dns.RR {
+	for _, rr := range re.All(z) {
+		if h := rr.Header(); h.Name == st.QName() && h.Rrtype == st.QType() && h.Class == st.QClass() {
+			return rr
+		}
+	}
+	return nil
+}
+
+func (re *Records) All(z string) []dns.RR {
+	if zone := plugin.Zones(re.origins).Matches(z); zone != "" {
+		if records, ok := re.m[zone]; ok {
+			return records
+		}
+	}
+	return nil
+}
