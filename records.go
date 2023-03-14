@@ -5,6 +5,7 @@ import (
 
 	"github.com/coredns/coredns/plugin"
 	"github.com/coredns/coredns/request"
+	"github.com/coredns/coredns/plugin/pkg/fall"
 
 	"github.com/miekg/dns"
 )
@@ -15,6 +16,7 @@ type Records struct {
 	m       map[string][]dns.RR
 
 	Next plugin.Handler
+	Fall *fall.F
 }
 
 // ServeDNS implements the plugin.Handle interface.
@@ -48,6 +50,9 @@ func (re *Records) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Ms
 
 	// handle NXDOMAIN, NODATA and normal response here.
 	if nxdomain {
+		if re.Fall.Through(qname) {
+			return plugin.NextOrFailure(re.Name(), re.Next, ctx, w, r)
+		}
 		m.Rcode = dns.RcodeNameError
 		if soa != nil {
 			m.Ns = []dns.RR{soa}
@@ -73,5 +78,6 @@ func (re *Records) Name() string { return "records" }
 func New() *Records {
 	re := new(Records)
 	re.m = make(map[string][]dns.RR)
+	re.Fall = &fall.F{}
 	return re
 }

@@ -33,6 +33,7 @@ This plugin can only be used once per Server Block.
 
 ~~~
 records [ZONES...] {
+    $OPTION [OPTION]
     [INLINE]
 }
 ~~~
@@ -42,6 +43,9 @@ records [ZONES...] {
 * **INLINE** the resource record that are to be served. These must be specified as the text
    represenation (as specifed in RFC 1035) of the record. See the examples below. Each record must
    be on a single line.
+* **OPTION** is a configuration option for the plugin. The following options are supported:
+  * `fallthrough`: When no matching record is found, instead of returning NXDOMAIN, the plugin will
+    call to the next plugin in the chain.
 
 If domain name in **INLINE** are not fully qualifed each of the **ZONES** are used as the origin and
 added to the names.
@@ -70,6 +74,22 @@ RFC 1035 zone file and everything after it will be ignored, hence the need for q
         mx1 IN MX 10 mx1
         dkim._domainkey.relay 3600 IN TXT "v=DKIM1\; h=sha256\; k=rsa\; s=email\; p=MIIBIj ..."
     }
+}
+~~~
+
+Override the record for `example.com`, without overriding anything else. Subdomains, like
+`foo.example.com`, will continue to be resolved normally (the `forward` plugin, in this case).
+
+~~~
+. {
+	records . {
+		$OPTION fallthrough
+		example.com.	300	IN	A	127.0.0.1
+	}
+
+	forward . 192.168.0.1 {
+		except example.com
+	}
 }
 ~~~
 
